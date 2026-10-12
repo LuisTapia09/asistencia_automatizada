@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Asistencia Facial</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #333; }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex: 1;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #222;
+        }
+        #estado {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            background-color: #e0e0e0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        th { background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>📸 Control de Asistencia con Reconocimiento Facial</h1>
+
+    <div class="container">
+        <!-- Columna Izquierda: Transmisión de Cámara -->
+        <div class="card">
+            <h2>Cámara en Vivo</h2>
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <div id="estado">Iniciando cámara...</div>
+        </div>
+
+        <!-- Columna Derecha: Tabla de Asistencias de Hoy -->
+        <div class="card">
+            <h2> Asistencias Registradas Hoy</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-asistencia">
+                    <!-- Filas cargadas dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const estadoDiv = document.getElementById('estado');
+
+        // 1. Solicitar acceso a la webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                estadoDiv.innerText = "Escaneando rostro...";
+                // Iniciar el ciclo de envío de fotogramas cada 2.5 segundos
+                setInterval(enviarFotograma, 2500);
+            })
+            .catch(err => {
+                estadoDiv.innerText = " Error al acceder a la cámara: " + err;
+                estadoDiv.style.backgroundColor = "#ffcccc";
+            });
+
+        // 2. Capturar y enviar imagen a Flask
+        function enviarFotograma() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            if (canvas.width === 0) return; // Esperar a que el video esté listo
+
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+            fetch('/procesar_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    estadoDiv.innerText = `✅ Identificado: ${data.nombre} (Distancia: ${data.distancia})`;
+                    estadoDiv.style.backgroundColor = "#d4edda";
+                    actualizarTabla();
+                } else if (data.status === 'no_match') {
+                    estadoDiv.innerText = "❌ Persona no reconocida";
+                    estadoDiv.style.backgroundColor = "#f8d7da";
+                } else {
+                    estadoDiv.innerText = "🔍 Buscando rostro...";
+                    estadoDiv.style.backgroundColor = "#e0e0e0";
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        // 3. Consultar y actualizar la tabla de asistencias
+        function actualizarTabla() {
+            fetch('/api/asistencias')
+                .then(res => res.json())
+                .then(datos => {
+                    const tbody = document.getElementById('tabla-asistencia');
+                    tbody.innerHTML = '';
+                    datos.forEach(row => {
+                        const tr = `<tr>
+                            <td><b>${row.Nombre}</b></td>
+                            <td>${row.Fecha}</td>
+                            <td>${row.Hora}</td>
+                        </tr>`;
+                        tbody.innerHTML += tr;
+                    });
+                });
+        }
+
+        // Cargar asistencias al abrir la página
+        actualizarTabla();
+    </script>
+</body>
+</html>

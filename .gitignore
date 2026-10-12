@@ -1,0 +1,17 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos temporales y de caché de DeepFace
+*.pkl
+temp_frame.jpg
+
+# Archivos de configuración de editores/IDE
+.vscode/
+.idea/
+.DS_Store

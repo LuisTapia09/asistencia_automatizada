@@ -1,0 +1,16 @@
+# Framework Web
+flask>=3.0.0
+
+# Procesamiento de imágenes y visión por computadora
+opencv-python==4.10.0.84
+
+# Inteligencia Artificial y Reconocimiento Facial
+deepface>=0.0.85
+tensorflow>=2.15.0
+tf-keras>=2.15.0
+
+# Manejo de datos y persistencia en CSV
+pandas>=2.1.0
+
+# Utilidades adicionales requeridas por DeepFace
+pillow>=10.0.0
